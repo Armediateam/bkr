@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FileText, FolderGit2, FolderOpen, LayoutGrid, UserCog } from 'lucide-react';
+import { BookOpen, FileText, FolderGit2, FolderOpen, LayoutGrid, UserCog, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -52,6 +52,11 @@ export function AppSidebar() {
                   title: 'Product Manager',
                   href: '/dashboard/product-manager',
                   icon: UserCog,
+              },
+              {
+                  title: 'Akun',
+                  href: '/dashboard/akun',
+                  icon: Users,
               },
           ]
         : [

@@ -6,6 +6,7 @@ use App\Http\Controllers\ProductManagerDashboardController;
 use App\Http\Controllers\ProductManagerReportController;
 use App\Http\Controllers\ProductManagerUserController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -21,6 +22,11 @@ Route::middleware(['auth', 'verified', 'role:owner'])->group(function () {
     Route::post('dashboard/proyek', [ProjectController::class, 'store'])->name('proyek.store');
     Route::get('dashboard/product-manager', [ProductManagerUserController::class, 'index'])->name('product-manager.users');
     Route::post('dashboard/product-manager', [ProductManagerUserController::class, 'store'])->name('product-manager.store');
+    
+    // User Account Management
+    Route::get('dashboard/akun', [UserController::class, 'index'])->name('akun.index');
+    Route::post('dashboard/akun', [UserController::class, 'store'])->name('akun.store');
+    Route::delete('dashboard/akun/{user}', [UserController::class, 'destroy'])->name('akun.destroy');
 });
 
 Route::prefix('product-manager')
