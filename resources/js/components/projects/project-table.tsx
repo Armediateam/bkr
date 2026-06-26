@@ -126,16 +126,7 @@ export function ProjectTable({
   const deferredSearch = useDeferredValue(search)
 
 
-  useEffect(() => {
-    if (!form.recentlySuccessful) {
-      return
-    }
 
-    setIsCreateDialogOpen(false)
-    form.reset()
-    form.setData("status", "Perencanaan")
-    form.setData("progress", "0")
-  }, [form, form.recentlySuccessful])
 
   const filteredData = useMemo(() => {
     const keyword = deferredSearch.trim().toLowerCase()
@@ -257,7 +248,7 @@ export function ProjectTable({
 
   useEffect(() => {
     table.setPageIndex(0)
-  }, [deferredSearch, stageFilter, statusFilter, table])
+  }, [deferredSearch, stageFilter, statusFilter])
 
   const visiblePages = useMemo(() => {
     if (totalPages <= 5) {
@@ -454,7 +445,12 @@ export function ProjectTable({
             className="grid gap-4"
             onSubmit={(event) => {
               event.preventDefault()
-              form.post("/dashboard/proyek")
+              form.post("/dashboard/proyek", {
+                onSuccess: () => {
+                  setIsCreateDialogOpen(false)
+                  form.reset()
+                },
+              })
             }}
           >
             <div className="grid gap-2">

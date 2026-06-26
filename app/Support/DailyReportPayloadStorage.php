@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 
 class DailyReportPayloadStorage
 {
@@ -52,6 +53,14 @@ class DailyReportPayloadStorage
 
     private function storeImage(UploadedFile $file, string $folder): string
     {
-        return $file->store("daily-reports/{$folder}", 'public');
+        try {
+            return $file->store("daily-reports/{$folder}", 'public');
+        } catch (\Exception $e) {
+            logger()->error("Failed to store daily report image in {$folder}: " . $e->getMessage());
+
+            throw ValidationException::withMessages([
+                'upload_error' => 'Gagal mengunggah gambar. Pastikan folder storage di hosting/server Anda memiliki izin menulis (writable).',
+            ]);
+        }
     }
 }

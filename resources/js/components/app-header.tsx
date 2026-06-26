@@ -39,14 +39,6 @@ type Props = {
     breadcrumbs?: BreadcrumbItem[];
 };
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
-
 const rightNavItems: NavItem[] = [
     {
         title: 'Repository',
@@ -68,6 +60,15 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
     const { auth } = page.props;
     const getInitials = useInitials();
     const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
+
+    const dashboardHref = auth.user?.role === 'product_manager' ? '/product-manager/dashboard' : dashboard();
+    const mainNavItems: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboardHref,
+            icon: LayoutGrid,
+        },
+    ];
 
     return (
         <>
@@ -135,7 +136,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                     </div>
 
                     <Link
-                        href={dashboard()}
+                        href={dashboardHref}
                         prefetch
                         className="flex items-center space-x-2"
                     >
