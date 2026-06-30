@@ -92,8 +92,14 @@ export default function Login({
                             </Button>
                         </div>
 
-                        <div className="text-center text-sm text-muted-foreground">
-                            Akses akun dibuat oleh owner dari dashboard.
+                        <div className="flex flex-col gap-2 text-center text-sm text-muted-foreground">
+                            <span>Akses akun dibuat oleh owner dari dashboard.</span>
+                            <span>
+                                Belum punya akun owner?{' '}
+                                <TextLink href="/register">
+                                    Daftar Admin
+                                </TextLink>
+                            </span>
                         </div>
                     </>
                 )}
