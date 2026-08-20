@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { KeyRound, Power, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,13 @@ export default function ModuleSettings({ modules }: Props) {
     if (showSkeleton) return <PageSkeleton />;
 
     const activeCount = modules.filter((module) => module.active).length;
+    const updateModule = (module: ModuleItem, active: boolean) => {
+        router.post('/dashboard/pengaturan/modul', {
+            moduleKey: module.key,
+            serial: module.serial,
+            active,
+        });
+    };
 
     return (
         <>
@@ -74,7 +81,9 @@ export default function ModuleSettings({ modules }: Props) {
                             className="grid gap-3 md:grid-cols-[1fr_1fr_auto]"
                             onSubmit={(event) => {
                                 event.preventDefault();
-                                post('/dashboard/pengaturan/modul');
+                                post('/dashboard/pengaturan/modul', {
+                                    preserveScroll: true,
+                                });
                             }}
                         >
                             <div className="grid gap-2">
@@ -159,10 +168,14 @@ export default function ModuleSettings({ modules }: Props) {
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     <Button
+                                        type="button"
                                         variant={
                                             module.active
                                                 ? 'outline'
                                                 : 'default'
+                                        }
+                                        onClick={() =>
+                                            updateModule(module, !module.active)
                                         }
                                     >
                                         <Power className="size-4" />
@@ -170,7 +183,13 @@ export default function ModuleSettings({ modules }: Props) {
                                             ? 'Nonaktifkan'
                                             : 'Aktifkan'}
                                     </Button>
-                                    <Button variant="outline">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() =>
+                                            updateModule(module, module.active)
+                                        }
+                                    >
                                         <Save className="size-4" />
                                         Simpan Pengaturan
                                     </Button>
