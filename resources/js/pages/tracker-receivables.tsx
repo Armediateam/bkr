@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Ban, CalendarClock, CircleDollarSign, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +67,7 @@ export default function TrackerReceivables({
     const [query, setQuery] = useState('');
     const [selected, setSelected] = useState<Row | null>(null);
     const [writeOffSelected, setWriteOffSelected] = useState<Row | null>(null);
-    const { post, processing } = useForm({});
+    const [processing, setProcessing] = useState(false);
     const showSkeleton = usePageSkeleton();
 
     const filtered = useMemo(() => {
@@ -98,12 +98,34 @@ export default function TrackerReceivables({
 
     const pay = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        post('/dashboard/piutang/bayar', { preserveScroll: true });
+        router.post(
+            '/dashboard/piutang/bayar',
+            new FormData(event.currentTarget),
+            {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onFinish: () => {
+                    setProcessing(false);
+                    setSelected(null);
+                },
+            },
+        );
     };
 
     const writeOff = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        post('/dashboard/piutang/write-off', { preserveScroll: true });
+        router.post(
+            '/dashboard/piutang/write-off',
+            new FormData(event.currentTarget),
+            {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onFinish: () => {
+                    setProcessing(false);
+                    setWriteOffSelected(null);
+                },
+            },
+        );
     };
 
     if (showSkeleton) {

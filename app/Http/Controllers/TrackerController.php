@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FinancialTransaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -9,21 +10,36 @@ use Inertia\Response;
 
 class TrackerController extends Controller
 {
-    public function transactions(): Response
+    public function transactions(Request $request): Response
     {
+        $dateFrom = $request->date('from')?->toDateString() ?? now()->startOfMonth()->toDateString();
+        $dateTo = $request->date('to')?->toDateString() ?? now()->toDateString();
+
         return Inertia::render('tracker-transactions', [
             'breadcrumbs' => [
                 ['title' => 'Dashboard', 'href' => '/dashboard'],
                 ['title' => 'Daftar Transaksi', 'href' => '/dashboard/daftar-transaksi'],
             ],
-            'dateFrom' => now()->startOfMonth()->toDateString(),
-            'dateTo' => now()->toDateString(),
-            'transactions' => [
-                ['id' => 'TRX-2026-0818-001', 'tanggal' => now()->subDays(2)->toDateString(), 'keterangan' => 'Penjualan chemical dan jasa vacuum', 'pihak' => 'PT Tirta Jernih Abadi', 'jenis' => 'Penjualan', 'nominal' => 6800000, 'kas' => 2300000, 'labaRugi' => 1900000, 'sisaTagihan' => 4500000, 'source' => 'Invoice'],
-                ['id' => 'TRX-2026-0816-004', 'tanggal' => now()->subDays(4)->toDateString(), 'keterangan' => 'Pembelian kaporit dan soda ash', 'pihak' => 'CV Aqua Prima Supply', 'jenis' => 'Pembelian', 'nominal' => 11500000, 'kas' => 0, 'labaRugi' => 0, 'sisaTagihan' => 11500000, 'source' => 'PO'],
-                ['id' => 'TRX-2026-0815-002', 'tanggal' => now()->subDays(5)->toDateString(), 'keterangan' => 'Transfer kas utama ke Bank BCA', 'pihak' => null, 'jenis' => 'Transfer Rekening', 'nominal' => 15000000, 'kas' => 0, 'labaRugi' => 0, 'sisaTagihan' => 0, 'source' => 'Kas'],
-                ['id' => 'TRX-2026-0813-003', 'tanggal' => now()->subDays(7)->toDateString(), 'keterangan' => 'Pembayaran piutang Villa Cemara Indah', 'pihak' => 'Villa Cemara Indah', 'jenis' => 'Penerimaan Piutang', 'nominal' => 4200000, 'kas' => 4200000, 'labaRugi' => 0, 'sisaTagihan' => 0, 'source' => 'Pelunasan'],
-            ],
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'transactions' => FinancialTransaction::query()
+                ->whereBetween('transaction_date', [$dateFrom, $dateTo])
+                ->latest('transaction_date')
+                ->latest('id')
+                ->get()
+                ->map(fn (FinancialTransaction $transaction): array => [
+                    'id' => $transaction->number,
+                    'tanggal' => $transaction->transaction_date->toDateString(),
+                    'keterangan' => $transaction->description ?? $transaction->category ?? $this->labelForType($transaction->type),
+                    'pihak' => $transaction->party_name,
+                    'jenis' => $this->labelForType($transaction->type),
+                    'nominal' => $transaction->total,
+                    'kas' => $transaction->paid_amount,
+                    'labaRugi' => $transaction->type === 'sales' ? $transaction->gross_profit : ($transaction->type === 'expense' ? -1 * $transaction->subtotal : 0),
+                    'sisaTagihan' => $transaction->outstanding_amount,
+                    'source' => $this->sourceForType($transaction->type),
+                ])
+                ->all(),
         ]);
     }
 
@@ -36,11 +52,22 @@ class TrackerController extends Controller
             ],
             'today' => now()->toDateString(),
             'cashAccounts' => $this->cashAccounts(),
-            'rows' => [
-                ['id' => 1, 'tanggal' => now()->subDays(20)->toDateString(), 'customer' => 'PT Tirta Jernih Abadi', 'keterangan' => 'Invoice INV-2026-0818-001', 'jumlah' => 6800000, 'terbayar' => 2300000, 'jatuhTempo' => now()->subDays(2)->toDateString(), 'status' => 'BELUM LUNAS'],
-                ['id' => 2, 'tanggal' => now()->subDays(9)->toDateString(), 'customer' => 'Villa Cemara Indah', 'keterangan' => 'Penggantian filter cartridge', 'jumlah' => 7200000, 'terbayar' => 0, 'jatuhTempo' => now()->addDays(4)->toDateString(), 'status' => 'BELUM LUNAS'],
-                ['id' => 3, 'tanggal' => now()->subDays(35)->toDateString(), 'customer' => 'Hotel Samudra Biru', 'keterangan' => 'Paket maintenance bulanan', 'jumlah' => 14800000, 'terbayar' => 14800000, 'jatuhTempo' => now()->subDays(5)->toDateString(), 'status' => 'LUNAS'],
-            ],
+            'rows' => FinancialTransaction::query()
+                ->where('type', 'sales')
+                ->where('total', '>', 0)
+                ->latest('transaction_date')
+                ->get()
+                ->map(fn (FinancialTransaction $transaction): array => [
+                    'id' => $transaction->id,
+                    'tanggal' => $transaction->transaction_date->toDateString(),
+                    'customer' => $transaction->party_name ?? 'Walk-in Customer',
+                    'keterangan' => $transaction->description ?? $transaction->number,
+                    'jumlah' => $transaction->total,
+                    'terbayar' => $transaction->paid_amount,
+                    'jatuhTempo' => $transaction->due_date?->toDateString() ?? $transaction->transaction_date->copy()->addDays(30)->toDateString(),
+                    'status' => $transaction->outstanding_amount <= 0 ? 'LUNAS' : 'BELUM LUNAS',
+                ])
+                ->all(),
         ]);
     }
 
@@ -53,27 +80,113 @@ class TrackerController extends Controller
             ],
             'today' => now()->toDateString(),
             'cashAccounts' => $this->cashAccounts(),
-            'rows' => [
-                ['id' => 1, 'tanggal' => now()->subDays(16)->toDateString(), 'vendor' => 'CV Aqua Prima Supply', 'keterangan' => 'Pembelian kaporit dan soda ash', 'jumlah' => 11500000, 'terbayar' => 0, 'jatuhTempo' => now()->subDays(1)->toDateString(), 'status' => 'BELUM LUNAS'],
-                ['id' => 2, 'tanggal' => now()->subDays(10)->toDateString(), 'vendor' => 'PT Pompa Nusantara', 'keterangan' => 'Pompa Hayward dan valve', 'jumlah' => 36800000, 'terbayar' => 20000000, 'jatuhTempo' => now()->addDays(6)->toDateString(), 'status' => 'BELUM LUNAS'],
-                ['id' => 3, 'tanggal' => now()->subDays(24)->toDateString(), 'vendor' => 'UD Mandiri Teknik', 'keterangan' => 'Seal, fitting, dan clamp', 'jumlah' => 4200000, 'terbayar' => 4200000, 'jatuhTempo' => now()->subDays(12)->toDateString(), 'status' => 'LUNAS'],
-            ],
+            'rows' => FinancialTransaction::query()
+                ->whereIn('type', ['purchase', 'expense'])
+                ->where('total', '>', 0)
+                ->latest('transaction_date')
+                ->get()
+                ->map(fn (FinancialTransaction $transaction): array => [
+                    'id' => $transaction->id,
+                    'tanggal' => $transaction->transaction_date->toDateString(),
+                    'vendor' => $transaction->party_name ?? 'Internal',
+                    'keterangan' => $transaction->description ?? $transaction->number,
+                    'jumlah' => $transaction->total,
+                    'terbayar' => $transaction->paid_amount,
+                    'jatuhTempo' => $transaction->due_date?->toDateString() ?? $transaction->transaction_date->copy()->addDays(14)->toDateString(),
+                    'status' => $transaction->outstanding_amount <= 0 ? 'LUNAS' : 'BELUM LUNAS',
+                ])
+                ->all(),
         ]);
     }
 
     public function payReceivable(Request $request): RedirectResponse
     {
-        return back()->with('success', 'Form pembayaran piutang sudah diterima. Penyimpanan pelunasan akan aktif setelah backend finansial dipindahkan.');
+        $validated = $request->validate([
+            'id' => ['required', 'integer', 'exists:financial_transactions,id'],
+            'tanggal' => ['required', 'date'],
+            'akun_kas' => ['nullable', 'string', 'max:20'],
+            'jumlah' => ['required', 'numeric', 'min:0.01'],
+            'catatan' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $transaction = FinancialTransaction::where('type', 'sales')->findOrFail($validated['id']);
+        $this->applyPayment($transaction, (int) $validated['jumlah'], [
+            'last_receivable_payment_date' => $validated['tanggal'],
+            'last_receivable_payment_account' => $validated['akun_kas'] ?? null,
+            'last_receivable_payment_note' => $validated['catatan'] ?? null,
+        ]);
+
+        return back()->with('success', 'Pembayaran piutang berhasil disimpan.');
     }
 
     public function writeOffReceivable(Request $request): RedirectResponse
     {
-        return back()->with('success', 'Form write-off piutang sudah diterima. Jurnal write-off akan aktif setelah backend finansial dipindahkan.');
+        $validated = $request->validate([
+            'id' => ['required', 'integer', 'exists:financial_transactions,id'],
+            'tanggal' => ['required', 'date'],
+            'jumlah' => ['required', 'numeric', 'min:0.01'],
+            'alasan' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $transaction = FinancialTransaction::where('type', 'sales')->findOrFail($validated['id']);
+        $this->applyPayment($transaction, (int) $validated['jumlah'], [
+            'write_off_date' => $validated['tanggal'],
+            'write_off_reason' => $validated['alasan'] ?? null,
+        ]);
+
+        return back()->with('success', 'Write-off piutang berhasil disimpan.');
     }
 
     public function payPayable(Request $request): RedirectResponse
     {
-        return back()->with('success', 'Form pembayaran hutang sudah diterima. Penyimpanan pelunasan akan aktif setelah backend finansial dipindahkan.');
+        $validated = $request->validate([
+            'id' => ['required', 'integer', 'exists:financial_transactions,id'],
+            'tanggal' => ['required', 'date'],
+            'akun_kas' => ['nullable', 'string', 'max:20'],
+            'jumlah' => ['required', 'numeric', 'min:0.01'],
+            'catatan' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $transaction = FinancialTransaction::whereIn('type', ['purchase', 'expense'])->findOrFail($validated['id']);
+        $this->applyPayment($transaction, (int) $validated['jumlah'], [
+            'last_payable_payment_date' => $validated['tanggal'],
+            'last_payable_payment_account' => $validated['akun_kas'] ?? null,
+            'last_payable_payment_note' => $validated['catatan'] ?? null,
+        ]);
+
+        return back()->with('success', 'Pembayaran hutang berhasil disimpan.');
+    }
+
+    private function applyPayment(FinancialTransaction $transaction, int $amount, array $metadata): void
+    {
+        $paidAmount = min($transaction->total, $transaction->paid_amount + $amount);
+        $existingMetadata = $transaction->metadata ?? [];
+
+        $transaction->update([
+            'paid_amount' => $paidAmount,
+            'outstanding_amount' => max(0, $transaction->total - $paidAmount),
+            'metadata' => array_merge($existingMetadata, $metadata),
+        ]);
+    }
+
+    private function labelForType(string $type): string
+    {
+        return match ($type) {
+            'sales' => 'Penjualan',
+            'purchase' => 'Pembelian',
+            'expense' => 'Pengeluaran',
+            default => ucfirst($type),
+        };
+    }
+
+    private function sourceForType(string $type): string
+    {
+        return match ($type) {
+            'sales' => 'Penjualan',
+            'purchase' => 'Pembelian',
+            'expense' => 'Pengeluaran',
+            default => 'Manual',
+        };
     }
 
     private function cashAccounts(): array

@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowDownToLine,
     Banknote,
@@ -259,7 +259,7 @@ export default function Pengeluaran({
     const [ppnPct, setPpnPct] = useState(11);
     const [pph23Pct, setPph23Pct] = useState(0);
     const [showHelp, setShowHelp] = useState(false);
-    const { post, processing } = useForm({});
+    const [processing, setProcessing] = useState(false);
     const showSkeleton = usePageSkeleton();
 
     const isPinjaman = kategori === 'PINJAMAN_KARYAWAN';
@@ -440,7 +440,20 @@ export default function Pengeluaran({
 
     const submit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        post('/dashboard/pengeluaran', { preserveScroll: true });
+        const formData = new FormData(event.currentTarget);
+        formData.set('kategori', kategori);
+        formData.set('subkategori', subkategori);
+        formData.set('akun_beban_kode', akunBebanKode);
+        formData.set('akun_pajak_kode', akunPajakKode);
+        formData.set('akun_prive_kode', akunPriveKode);
+        formData.set('ppn_pct', String(pajakAktif ? ppnPct : 0));
+        formData.set('pph23_pct', String(pajakAktif ? pph23Pct : 0));
+
+        router.post('/dashboard/pengeluaran', formData, {
+            preserveScroll: true,
+            onStart: () => setProcessing(true),
+            onFinish: () => setProcessing(false),
+        });
     };
 
     if (showSkeleton) {

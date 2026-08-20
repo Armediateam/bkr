@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowUpRight,
     CircleHelp,
@@ -229,7 +229,7 @@ export default function Pemasukan({
     const [pelanggan, setPelanggan] = useState('');
     const [invoicePelanggan, setInvoicePelanggan] = useState('');
 
-    const { post, processing } = useForm({});
+    const [processing, setProcessing] = useState(false);
     const showSkeleton = usePageSkeleton();
 
     const itemTotal = useMemo(
@@ -314,7 +314,16 @@ export default function Pemasukan({
 
     const submit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        post('/dashboard/pemasukan', { preserveScroll: true });
+        const formData = new FormData(event.currentTarget);
+        formData.set('ppn_pct', String(pajakAktif ? ppnPct : 0));
+        formData.set('pph22_pct', String(pajakAktif ? pph22Pct : 0));
+        formData.set('pph23_pct', String(pajakAktif ? pph23Pct : 0));
+
+        router.post('/dashboard/pemasukan', formData, {
+            preserveScroll: true,
+            onStart: () => setProcessing(true),
+            onFinish: () => setProcessing(false),
+        });
     };
 
     if (showSkeleton) {

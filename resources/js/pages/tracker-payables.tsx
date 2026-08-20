@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { CalendarClock, CircleDollarSign, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,7 @@ export default function TrackerPayables({ today, cashAccounts, rows }: Props) {
     );
     const [query, setQuery] = useState('');
     const [selected, setSelected] = useState<Row | null>(null);
-    const { post, processing } = useForm({});
+    const [processing, setProcessing] = useState(false);
     const showSkeleton = usePageSkeleton();
 
     const filtered = useMemo(() => {
@@ -93,7 +93,18 @@ export default function TrackerPayables({ today, cashAccounts, rows }: Props) {
 
     const pay = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        post('/dashboard/hutang/bayar', { preserveScroll: true });
+        router.post(
+            '/dashboard/hutang/bayar',
+            new FormData(event.currentTarget),
+            {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onFinish: () => {
+                    setProcessing(false);
+                    setSelected(null);
+                },
+            },
+        );
     };
 
     if (showSkeleton) {

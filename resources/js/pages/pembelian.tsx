@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     Building2,
     CircleHelp,
@@ -218,7 +218,7 @@ export default function Pembelian({
     const [pph23Pct, setPph23Pct] = useState(0);
     const [masaPakai, setMasaPakai] = useState(36);
     const [showHelp, setShowHelp] = useState(false);
-    const { post, processing } = useForm({});
+    const [processing, setProcessing] = useState(false);
     const showSkeleton = usePageSkeleton();
 
     const produkTotal = useMemo(
@@ -267,7 +267,16 @@ export default function Pembelian({
 
     const submit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        post('/dashboard/pembelian', { preserveScroll: true });
+        const formData = new FormData(event.currentTarget);
+        formData.set('kategori', kategori);
+        formData.set('ppn_pct', String(pajakAktif ? ppnPct : 0));
+        formData.set('pph23_pct', String(pajakAktif ? pph23Pct : 0));
+
+        router.post('/dashboard/pembelian', formData, {
+            preserveScroll: true,
+            onStart: () => setProcessing(true),
+            onFinish: () => setProcessing(false),
+        });
     };
 
     if (showSkeleton) {
@@ -874,6 +883,7 @@ export default function Pembelian({
                                                     >
                                                         <td className="px-3 py-2">
                                                             <Input
+                                                                name="item_nama[]"
                                                                 list="produk-beli-list"
                                                                 value={
                                                                     row.produk
@@ -893,6 +903,7 @@ export default function Pembelian({
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <Input
+                                                                name="satuan[]"
                                                                 value={
                                                                     row.satuan
                                                                 }
@@ -912,6 +923,7 @@ export default function Pembelian({
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <Input
+                                                                name="qty[]"
                                                                 type="number"
                                                                 min="0"
                                                                 step="0.01"
@@ -934,6 +946,7 @@ export default function Pembelian({
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <MoneyInput
+                                                                name="harga_beli[]"
                                                                 value={
                                                                     row.harga
                                                                 }
